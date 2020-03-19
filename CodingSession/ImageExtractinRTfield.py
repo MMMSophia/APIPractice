@@ -14,10 +14,10 @@ MD5Hash_list = []
 #  Get Salesforce access token and use REST API
 sf_params = {
     "grant_type": "password",
-    "client_id": "3MVG99OxTyEMCQ3i7lR6b76QEs0XL3SOE2JTyYUC9BDETZZ4z_fnEtRru3JQKMfV5SsGS9v9VozOYI2BG6KOa",
-    "client_secret": "5542977191773596946",
-    "username": "d365datamigration@lenovo.com.na",
-    "password": "Szc#74Ka3pqfe!ToHOGI8T363OhdoyDAKsMT0mC6"
+    "client_id": "",
+    "client_secret": "",
+    "username": "",
+    "password": ""
 }
 
 r = requests.post("https://login.salesforce.com/services/oauth2/token",
@@ -29,7 +29,7 @@ headers = {
 
 #  Connect to Carbon database server
 conn = pyodbc.connect("Driver={SQL Server Native Client 11.0};"
-                      r"Server=WHENDERSON-MNVL\Carbon;"
+                      r"Server=;"
                       "Database=CARBON" + env + ";"
                       "Trusted_Connection=yes;")
 cursor = conn.cursor()  # connection to get all rich text fields with <img> tags
