@@ -14,10 +14,10 @@ MD5Hash_list = []
 #  Get Salesforce access token and use REST API
 sf_params = {
     "grant_type": "password",
-    "client_id": "",
-    "client_secret": "",
-    "username": "",
-    "password": ""
+    "client_id": "3MVG99OxTyEMCQ3i7lR6b76QEs0XL3SOE2JTyYUC9BDETZZ4z_fnEtRru3JQKMfV5SsGS9v9VozOYI2BG6KOa",
+    "client_secret": "5542977191773596946",
+    "username": "d365datamigration@lenovo.com.na",
+    "password": "Szc#74Ka3pqfe!ToHOGI8T363OhdoyDAKsMT0mC6"
 }
 
 r = requests.post("https://login.salesforce.com/services/oauth2/token",
@@ -29,8 +29,8 @@ headers = {
 
 #  Connect to Carbon database server
 conn = pyodbc.connect("Driver={SQL Server Native Client 11.0};"
-                      r"Server=;"
-                      "Database=" + env + ";"
+                      r"Server=WHENDERSON-MNVL\Carbon;"
+                      "Database=CARBON" + env + ";"
                       "Trusted_Connection=yes;")
 cursor = conn.cursor()  # connection to get all rich text fields with <img> tags
 
@@ -87,7 +87,7 @@ for row in cursor:
             #  Generate the file path
             path = 'D:/App/Carbon/Salesforce/Image Attachments/' + env + '/Land/' + EID + '/'
             try:
-                os.mkdir(path)
+                os.makedirs(path)
             except OSError as error:
                 print("The directory already exists", EID)
             #  Download the images into local folder
@@ -131,7 +131,7 @@ for row in cursor:
             #  Generate the file path
             path = 'D:/App/Carbon/Salesforce/Image Attachments/' + env + '/Land/' + EID + '/'
             try:
-                os.mkdir(path)
+                os.makedirs(path)
             except OSError as error:
                 print("The directory already exists", EID)
             # base 64 decoded and save the image in local folder
@@ -174,8 +174,11 @@ for each_RTField in RTField_list:
     cursor.commit()
 
 # insert MD5 hash, Case Id and File name into SFImageAttachmentLand table
-cursor.execute("truncate table SFImageAttachmentLand")
+#  cursor.execute("truncate table SFImageAttachmentLand")
 for each_MD5Hash in MD5Hash_list:
-    cursor.execute("insert into SFImageAttachmentLand (Attachment_FileHash, ParentId, Name) values (?, ?, ?)",
-                   (each_MD5Hash['Attachment_FileHash'], each_MD5Hash['ParentId'], each_MD5Hash['Name']))
+    cursor.execute("select * from SFImageAttachmentLand where ParentId=? and Name=?",
+                   (each_MD5Hash['ParentId'], each_MD5Hash['Name']))
+    if cursor.rowcount == 0:
+        cursor.execute("insert into SFImageAttachmentLand (Attachment_FileHash, ParentId, Name) values (?, ?, ?)",
+                       (each_MD5Hash['Attachment_FileHash'], each_MD5Hash['ParentId'], each_MD5Hash['Name']))
     cursor.commit()
