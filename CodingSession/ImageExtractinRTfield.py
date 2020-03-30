@@ -6,12 +6,15 @@ import base64
 import sys
 import hashlib
 
+
 env = sys.argv[1]
 objectname = 'Case'
 RTField_list = []
 MD5Hash_list = []
 
 #  Get Salesforce access token and use REST API
+
+
 def getaccesstoken():
     sf_params = {
         "grant_type": "password",
@@ -27,6 +30,7 @@ def getaccesstoken():
 
 
 def getsalesforceurlimage(raw_text):
+    new_text = raw_text
     image_url = re.findall(
         'https://c\.na79\.content\.force\.com/servlet/rtaImage\?eid=\S+&amp;feoid=\S+&amp;refid=\S+"', raw_text)
     if image_url:
@@ -126,11 +130,11 @@ access_token = getaccesstoken()
 
 #  Connect to Carbon database server
 conn = pyodbc.connect("Driver={SQL Server Native Client 11.0};"
-                      "Server=;"
+                      r"Server=WHENDERSON-MNVL\Carbon;"
                       "Database=CARBON" + env + ";"
                       "Trusted_Connection=yes;")
 cursor = conn.cursor()  # connection to get all rich text fields with <img> tags
-lastrun = cursor.execute("select LastRun from Process_Control where ProcessName='SFRTField-Stage'")
+lastrun = cursor.execute("select LastRun from Process_Control where ProcessName='SFRTField-Stage'").fetchone()
 cursor.execute(r"""
     select * from (select Id, CaseNumber, 'Problem_Recreation__c' as API_Name, cast(Problem_Recreation__c as nvarchar(max)) as RichText, LastModifiedDate from SFCaseLand 
     where cast(Problem_Recreation__c as nvarchar(max)) is not null and cast(Problem_Recreation__c as nvarchar(max)) like '%</img>%'
@@ -159,10 +163,9 @@ for row in cursor:
     CaseNumber = row[1]
     fieldname = row[2]
     raw_text = row[3]
-    new_text = raw_text
 
     # find html tags with Salesforce link
-    getsalesforceurlimage(raw_text)
+    new_text, MD5Hash_list = getsalesforceurlimage(raw_text)
     #  find html tags with base64 encoded
     getbase64encodedimage(new_text, MD5Hash_list)
     #  find html tags with local file path embedded
@@ -177,14 +180,13 @@ for row in cursor:
     RTField_list.append(RTField_derived)
 
 
-
 #  insert id, case number and new text into SQL table
 #  cursor.execute("truncate table SFRTFieldStage")
 for each_RTField in RTField_list:
     cursor.execute("select * from SFRTFieldStage where Id=? and APIName=?",(each_RTField['Id'], each_RTField['APIName']))
     if cursor.rowcount == 0:
         cursor.execute("insert into SFRTFieldStage (CaseNumber, Id, APIName, Rich_Text_Field_derived) values (?, ?, ?, ?)",
-            (each_RTField['CaseNumber'], each_RTField['Id'], each_RTField['APIName'], each_RTField['Rich_Text_Field_derived']))
+                       (each_RTField['CaseNumber'], each_RTField['Id'], each_RTField['APIName'], each_RTField['Rich_Text_Field_derived']))
     else:
         cursor.execute("update SFRTFieldStage set Rich_Text_Field_derived=? where Id=? and APIName=?",
                        (each_RTField['Rich_Text_Field_derived'], each_RTField['Id'], each_RTField['APIName']))
@@ -199,3 +201,6 @@ for each_MD5Hash in MD5Hash_list:
         cursor.execute("insert into SFImageAttachmentLand (Attachment_FileHash, ParentId, Name) values (?, ?, ?)",
                        (each_MD5Hash['Attachment_FileHash'], each_MD5Hash['ParentId'], each_MD5Hash['Name']))
     cursor.commit()
+
+cursor.execute("update Process_Control set LastRun=(select LastRun from Process_Control where ProcessName='SFCase-Land') where ProcessName='SFRTField-Stage'")
+cursor.commit()
